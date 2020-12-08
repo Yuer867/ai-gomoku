@@ -167,7 +167,7 @@ def constructTree(n, board, ruleOfPlayers, action, probOfPosition=None):
                 board_copy[pos[0]][pos[1]] = ruleOfPlayers
                 temp_value = be.evaluate(board_copy)
                 successors.append(
-                    Node(ruleOfPlayers=3 - ruleOfPlayers, isLeaf=True, value=temp_value,
+                    Node(ruleOfPlayers= 3 - ruleOfPlayers, isLeaf=True, value=temp_value,
                          action=pos))
         else:
             for pos in probOfPosition:
@@ -179,7 +179,7 @@ def constructTree(n, board, ruleOfPlayers, action, probOfPosition=None):
             temp_list.sort(reverse=True)
             for v in temp_list[0:depth]:
                 pos = probOfPosition[top_list.index(v)]
-                successors.append(Node(ruleForPlayers=3 - ruleOfPlayers, isLeaf=True, value=v, action=pos))
+                successors.append(Node(ruleForPlayers= 3 - ruleOfPlayers, isLeaf=True, value=v, action=pos))
 
     else:
         if len(probOfPosition) < depth:
@@ -190,7 +190,7 @@ def constructTree(n, board, ruleOfPlayers, action, probOfPosition=None):
                 board_copy[pos[0]][pos[1]] = ruleOfPlayers
                 # print board_copy
                 successors.append(
-                    constructTree(n - 1, board_copy, 3 - ruleOfPlayers, pos,
+                    constructTree(n - 1, board_copy,3 - ruleOfPlayers, pos,
                                   renew_probable_position(pos, probOfPosition)))
         else:
             for pos in probOfPosition:
@@ -204,7 +204,7 @@ def constructTree(n, board, ruleOfPlayers, action, probOfPosition=None):
                 board_copy = copy.deepcopy(board)
                 board_copy[pos[0]][pos[1]] = ruleOfPlayers
                 successors.append(
-                    constructTree(n - 1, board_copy, 3 - ruleOfPlayers, pos,
+                    constructTree(n - 1, board_copy,3 - ruleOfPlayers, pos,
                                   renew_probable_position(pos, probOfPosition)))
     node.successor = successors
     return node
@@ -259,7 +259,6 @@ def renew_probable_position(action, probable_list):
 
     return probable_list
 
-
 def pre_process(board):
     probOfPosition = probable_position(board)
     # 判断是否可以直接形成连五或活四
@@ -267,16 +266,23 @@ def pre_process(board):
         board_copy_my = copy.deepcopy(board)
         board_copy_my[pos[0]][pos[1]] = 1
         type_list_my = be.board_type_count(board_copy_my, 'my', attack=False)
-
+        if type_list_my['FIVE'] != 0:
+            return pos[0], pos[1]
+        else:
+            continue
+    for pos in probOfPosition:
         board_copy_opponent = copy.deepcopy(board)
         board_copy_opponent[pos[0]][pos[1]] = 2
         type_list_opponent = be.board_type_count(board_copy_opponent, 'opponent', attack=False)
-
-        if type_list_my['FIVE'] != 0:
+        if type_list_opponent['FIVE'] != 0 or type_list_opponent['FOUR'] != 0:
             return pos[0], pos[1]
-        elif type_list_opponent['FIVE'] != 0 or type_list_opponent['FOUR'] != 0:
-            return pos[0], pos[1]
-        elif type_list_my['FOUR'] != 0:
+        else:
+            continue
+    for pos in probOfPosition:
+        board_copy_my = copy.deepcopy(board)
+        board_copy_my[pos[0]][pos[1]] = 1
+        type_list_my = be.board_type_count(board_copy_my, 'my', attack=False)
+        if type_list_my['FOUR'] != 0:
             return pos[0], pos[1]
         else:
             continue
@@ -285,18 +291,19 @@ def pre_process(board):
 
 def pruning_brain():
     max_depth = 2
-    root_node = constructTree(max_depth, board, 1, None)
+
+    # 预先判断是否需要攻击/堵截对方
     if pre_process(board) is not None:
         x, y = pre_process(board)
         pp.do_mymove(x, y)
+
     else:
+        root_node = constructTree(max_depth, board, 1, None)
         if root_node is None:
-            # logDebug("This is the log when root node is None")
             pp.do_mymove(10, 10)
         else:
             max_value, action = value(root_node, float("-inf"), float("inf"))
             # assert action is not None
-            # logDebug("This is the log when root node is not None")
             pp.do_mymove(action[0], action[1])
 
 
@@ -317,28 +324,7 @@ if DEBUG_EVAL:
 # A possible way how to debug brains.
 # To test it, just "uncomment" it (delete enclosing """)
 ######################################################################
-#
-# # define a file for logging ...
-# DEBUG_LOGFILE = "/tmp/pbrain-pyrandom.log"
-# # ...and clear it initially
-# with open(DEBUG_LOGFILE, "w") as f:
-#     pass
-#
-#
-# # define a function for writing messages to the file
-# def logDebug(msg):
-#     with open(DEBUG_LOGFILE, "a") as f:
-#         f.write(msg + "\n")
-#         f.flush()
-#
-#
-# # define a function to get exception traceback
-# def logTraceBack():
-#     import traceback
-#     with open(DEBUG_LOGFILE, "a") as f:
-#         traceback.print_exc(file=f)
-#         f.flush()
-#     raise
+
 
 
 # use logDebug wherever
@@ -356,7 +342,8 @@ if DEBUG_EVAL:
 ######################################################################
 
 # "overwrites" functions in pisqpipe module
-pp.width, pp.height = 20, 20
+pp.height = 20
+pp.width = 20
 pp.brain_init = brain_init
 pp.brain_restart = brain_restart
 pp.brain_my = brain_my
